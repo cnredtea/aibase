@@ -1,0 +1,85 @@
+{
+  "id": null,
+  "title": "Queue Observability",
+  "timezone": "browser",
+  "schemaVersion": 36,
+  "version": 0,
+  "refresh": "5s",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Queue Depth (waiting)",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "expr": "sum(queue_depth{status=\"waiting\"})",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "DLQ Depth (failed)",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "expr": "sum(queue_depth{status=\"failed\"})",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "Jobs Completed vs Failed",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+      "targets": [
+        { "expr": "sum(rate(queue_jobs_completed_total[5m]))", "legendFormat": "completed" },
+        { "expr": "sum(rate(queue_jobs_failed_total[5m]))", "legendFormat": "failed" }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "Job Failure Rate",
+      "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "sum(rate(queue_jobs_failed_total[5m])) / (sum(rate(queue_jobs_completed_total[5m])) + sum(rate(queue_jobs_failed_total[5m])))",
+          "legendFormat": "failure rate"
+        }
+      ]
+    },
+    {
+      "type": "heatmap",
+      "title": "Job Processing Duration",
+      "gridPos": { "x": 0, "y": 20, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "sum(rate(queue_job_processing_duration_seconds_bucket[5m])) by (le)",
+          "legendFormat": "p95"
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "p95 Job Processing Duration",
+      "gridPos": { "x": 0, "y": 28, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(queue_job_processing_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p95 duration"
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "Latency to Start (p95)",
+      "gridPos": { "x": 0, "y": 36, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(queue_job_latency_to_start_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p95 latency"
+        }
+      ]
+    }
+  ]
+}

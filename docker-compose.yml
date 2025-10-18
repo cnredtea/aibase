@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '6379:6379'
+
+  queue-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - QUEUE_NAME=${QUEUE_NAME:-jobs}
+      - JOB_CONCURRENCY=${JOB_CONCURRENCY:-5}
+      - QUEUE_METRICS_PORT=9464
+      - NODE_ENV=production
+      - SENTRY_DSN=${SENTRY_DSN}
+      - SENTRY_TRACES_SAMPLE_RATE=${SENTRY_TRACES_SAMPLE_RATE:-0}
+      - ENABLE_JOB_SIMULATOR=${ENABLE_JOB_SIMULATOR:-true}
+      - JOB_SIMULATOR_RATE_PER_MINUTE=${JOB_SIMULATOR_RATE_PER_MINUTE:-30}
+    depends_on:
+      - redis
+    ports:
+      - '9464:9464'
+    command: ["npm", "run", "worker:dev"]
+
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    volumes:
+      - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./config/prometheus/alerting_rules.yml:/etc/prometheus/alerting_rules.yml:ro
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    ports:
+      - '9090:9090'
+    depends_on:
+      - queue-worker
+      - alertmanager
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    volumes:
+      - ./config/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    environment:
+      - PAGERDUTY_ROUTING_KEY=${PAGERDUTY_ROUTING_KEY}
+      - ALERT_EMAIL_TO=${ALERT_EMAIL_TO}
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+    ports:
+      - '9093:9093'
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./config/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./config/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./config/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - '3000:3000'
+    depends_on:
+      - prometheus
