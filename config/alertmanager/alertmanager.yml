@@ -1,0 +1,24 @@
+route:
+  receiver: default
+  routes:
+    - match:
+        severity: page
+      receiver: pagerduty
+    - match:
+        severity: ticket
+      receiver: email
+
+receivers:
+  - name: default
+    email_configs:
+      - to: ${ALERT_EMAIL_TO}
+        send_resolved: true
+  - name: pagerduty
+    pagerduty_configs:
+      - routing_key: ${PAGERDUTY_ROUTING_KEY}
+        severity: critical
+        send_resolved: true
+  - name: email
+    email_configs:
+      - to: ${ALERT_EMAIL_TO}
+        send_resolved: true
