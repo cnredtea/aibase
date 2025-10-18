@@ -1,0 +1,47 @@
+# Fly.io app configuration for the image-processing worker
+# Rename app to your own before deploying: fly launch --path . --copy-config
+app = "image-worker-app"
+primary_region = "iad"
+
+[build]
+  dockerfile = "worker/Dockerfile"
+
+[env]
+  PORT = "8080"
+  HEALTHCHECK_PATH = "/healthz"
+
+[[services]]
+  internal_port = 8080
+  processes = ["app"]
+  protocol = "tcp"
+
+  [services.concurrency]
+    # allow up to N connections per VM (HTTP health + any debug)
+    soft_limit = 50
+    hard_limit = 100
+
+  [[services.http_checks]]
+    interval = "15s"
+    timeout = "5s"
+    method = "get"
+    path = "/healthz"
+    protocol = "http"
+    tls_skip_verify = false
+    grace_period = "10s"
+
+  [[services.ports]]
+    port = 8080
+
+[checks]
+  [checks.health]
+    type = "http"
+    port = 8080
+    interval = "15s"
+    timeout = "5s"
+    grace_period = "10s"
+    method = "get"
+    path = "/healthz"
+
+[metrics]
+  port = 8080
+  path = "/healthz"
